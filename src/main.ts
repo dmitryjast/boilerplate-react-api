@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core'; // Main framework class
+import { AppModule } from './app.module'; // Combine all app modules
+import { ConfigService } from '@nestjs/config'; // Service for reading *.env
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

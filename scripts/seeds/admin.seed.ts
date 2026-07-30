@@ -1,10 +1,9 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../src/app.module';
 import { UsersService } from '../../src/modules/users/users.service';
 import { UserRole } from '../../src/modules/users/user.entity';
 import * as readline from 'readline';
 import * as crypto from 'crypto';
 
+// Creating terminal interface
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 const yesNo = async (text: string): Promise<boolean> => {

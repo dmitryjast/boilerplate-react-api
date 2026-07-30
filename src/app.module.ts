@@ -1,13 +1,14 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { Module } from '@nestjs/common'; // Decorator that marked class as nest module
+import { AppController } from './app.controller'; // Responsible for requests
+import { AppService } from './app.service'; // Responsible for logic
 
 // Type ORM (object relational-mapping)
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersModule } from './modules/users/users.module';
+import { ConfigModule, ConfigService } from '@nestjs/config'; // Access and reading *.env
+import { TypeOrmModule } from '@nestjs/typeorm'; // Module for connecting type ORM
+import { UsersModule } from './modules/users/users.module'; // Connecting users module
 
 @Module({
+  // Other modules that need for this module
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -28,7 +29,9 @@ import { UsersModule } from './modules/users/users.module';
     }),
     UsersModule
   ],
+  // Controllers that process requests
   controllers: [AppController],
+  // Services with business logic
   providers: [AppService],
 })
 export class AppModule {}

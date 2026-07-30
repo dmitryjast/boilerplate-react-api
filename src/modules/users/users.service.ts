@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository } from 'typeorm'; // Class for methods for interrraction with DB find, save, delete
 import { User, UserRole } from './user.entity';
 import * as bcrypt from 'bcrypt';
 
