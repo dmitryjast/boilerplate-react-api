@@ -15,6 +15,7 @@ async function setup() {
   const generatedSecret = crypto.randomBytes(64).toString('hex')
 
   const config = {
+    NODE_ENV: await question('Environment (default: dev or prod for production): ') || 'dev',
     PORT: await question('Server port (default: 3000): ') || '3000',
     DB_HOST: await question('Database host (default: localhost): ') || 'localhost',
     DB_PORT: await question('Database port (default: 5432): ') || '5432',

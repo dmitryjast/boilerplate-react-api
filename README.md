@@ -1,3 +1,29 @@
+
+# Base commands:
+
+npm run setup    — Fill in environment variables
+npm run start:dev — Start server + TypeORM creates database tables automatically
+npm run seed     — Launch seeds
+
+# Interraction to DB:
+
+brew services list - status
+
+brew services start postgresql@16 - start postgre
+
+brew services stop postgresql@16 - stop postgre
+
+brew services restart postgresql@16 - restart postgre
+
+pg_isready - check connection
+
+# TS
+
+CTRL + Shift + P - restart server
+kill -9 $(lsof -t -i:3000) - kill process
+lsof -i :3000 -  check all ports
+
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
