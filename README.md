@@ -23,6 +23,13 @@ CTRL + Shift + P - restart server
 kill -9 $(lsof -t -i:3000) - kill process
 lsof -i :3000 -  check all ports
 
+# Seeds
+nest generate module modules/modulename - generate module
+nest generate service modules/modulename - generate service
+nest generate controller modules/modulename - generate controller (if need)
+
+after filling all files run npm run start:dev - it create all tables in DB
+
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>

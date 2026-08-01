@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { seedAdmin } from './admin.seed';
+import { seedSettings } from './settings.seed';
 
 async function runSeeds() {
     console.log('\nRunning seeds...\n')
@@ -9,7 +10,7 @@ async function runSeeds() {
 
     // Seeds
     await seedAdmin(app)
-    //await seedSettings(app)
+    await seedSettings(app)
     //await seedProductCategories(app)
 
     console.log('\n✅ All seeds completed!\n')
