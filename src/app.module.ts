@@ -7,6 +7,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config'; // Access and read
 import { TypeOrmModule } from '@nestjs/typeorm'; // Module for connecting type ORM
 import { UsersModule } from './modules/users/users.module'; // Connecting users module
 import { SettingsModule } from './modules/settings/settings.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { SessionsModule } from './modules/sessions/sessions.module';
 
 @Module({
   // Other modules that need for this module
@@ -29,7 +31,9 @@ import { SettingsModule } from './modules/settings/settings.module';
       inject: [ConfigService]
     }),
     UsersModule,
-    SettingsModule
+    SettingsModule,
+    AuthModule,
+    SessionsModule
   ],
   // Controllers that process requests
   controllers: [AppController],

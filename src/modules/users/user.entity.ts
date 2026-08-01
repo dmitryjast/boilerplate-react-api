@@ -42,4 +42,6 @@ export class User {
     @Column({ nullable: true })
     verifiedAt!: Date;
 
+
+
 }
