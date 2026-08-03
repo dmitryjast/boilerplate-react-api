@@ -8,6 +8,21 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') ?? 3000;
 
+  // Enable CORS (Cross-Origin Resource Sharing)
+  app.enableCors({
+    origin: (origin, callback) => {
+      const allowedOrigins = [configService.get('FRONTEND_URL')] // Allow requests only from this address
+      const localhostPattern = /^http:\/\/localhost:\d+$/ // Allowed requests from localhosts by pattern
+
+      if (!origin || allowedOrigins.includes(origin) || localhostPattern.test(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS.'))
+      }
+    },
+    credentials: true,
+  })
+
   await app.listen(port);
 }
 bootstrap();
