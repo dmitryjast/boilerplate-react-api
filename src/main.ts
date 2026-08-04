@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core'; // Main framework class
 import { AppModule } from './app.module'; // Combine all app modules
 import { ConfigService } from '@nestjs/config'; // Service for reading *.env
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,6 +23,10 @@ async function bootstrap() {
     },
     credentials: true,
   })
+
+  app.useGlobalPipes(new ValidationPipe({
+    //whitelist: true,
+  }))
 
   await app.listen(port);
 }

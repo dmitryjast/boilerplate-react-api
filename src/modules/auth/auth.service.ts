@@ -1,13 +1,16 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UserRole } from '../users/user.entity';
 
-import * as bcryot from 'bcrypt';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
-// Interfaces (types for methods)
+import * as bcrypt from 'bcrypt';
+
+// Internal types
 
 interface TokensDto {
     userId: number;
@@ -15,10 +18,9 @@ interface TokensDto {
     role: UserRole;
 }
 
-interface RegisterDto {
-    name: string;
-    email: string;
-    password: string;
+interface SessionDto {
+    userId: number;
+    refreshToken: string;
 }
 
 @Injectable()
@@ -30,10 +32,59 @@ export class AuthService {
         private jwtService: JwtService,
     ) {}
 
-    // Methods
+    // Main Methods
+
+    async register({ name, email, password }: RegisterDto) {
+        // Checking for user exist
+        let user = await this.usersService.findByEmail(email)
+
+        if(user) {
+            throw new ConflictException('User with this email already exists.')
+        }
+
+        // Creating user
+        user = await this.usersService.create({ name, email, password })
+
+        // Generating tokens
+        const { accessToken, refreshToken } = await this.generateTokens({ userId: user.id, email: user.email, role: user.userRole })
+
+        // Saving session
+        await this.saveSession({ userId: user.id, refreshToken })
+    
+        return { accessToken, refreshToken }
+    }
+
+    async login({ email, password }: LoginDto) {
+        // Checking for user exist
+        const user = await this.usersService.findByEmail(email)
+
+        if(!user) {
+            throw new UnauthorizedException('Invalid email or password.')
+        }
+
+        // Compare password
+        const isPasswordValid = await bcrypt.compare(password, user.password)
+
+        if(!isPasswordValid) {
+            throw new UnauthorizedException('Invalid email or password.')
+        }
+
+        // Generating tokens
+        const { accessToken, refreshToken } = await this.generateTokens({ userId: user.id, email: user.email, role: user.userRole })
+
+        // Saving session
+        await this.saveSession({ userId: user.id, refreshToken })
+
+        return {
+            message: 'Login successful.',
+            accessToken,
+            refreshToken
+        }
+    }
+
+    // Other methods
 
     private async generateTokens({ userId, email, role }: TokensDto) {
-        
         const accessToken = this.jwtService.sign(
             { userId, email, role }, // Data that wtires to token
             { expiresIn: '15m' }
@@ -45,37 +96,16 @@ export class AuthService {
         )
 
         return { accessToken, refreshToken }
-
     }
 
-    async register({ name, email, password }: RegisterDto) {
+    private async saveSession({ userId, refreshToken }: SessionDto) {
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, 10)
 
-        // Checking for user exist
-        const existingUser = await this.usersService.findByEmail(email)
-
-        if(existingUser) {
-            throw new ConflictException('User with this email already exists.')
-        }
-
-        // Creating user
-        const user = await this.usersService.create({ name, email, password })
-
-        // Generating tokens
-        const { accessToken, refreshToken } = await this.generateTokens({ userId: user.id, email: user.email, role: user.userRole })
-
-        // Hashing refresh token
-        const hashedRefreshToken = await bcryot.hash(refreshToken, 10)
-
-        // Saving session
         await this.sessionsService.create({
-            userId: user.id,
+            userId,
             refreshToken: hashedRefreshToken,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        })
-    
-        // Generating tokens
-        return { accessToken, refreshToken }
-
+        })          
     }
 
 }
