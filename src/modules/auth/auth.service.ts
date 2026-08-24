@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UserRole } from '../users/user.entity';
+import { Session as SessionEntity } from '../sessions/session.entity';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -82,6 +83,10 @@ export class AuthService {
         }
     }
 
+    async logout( userId: number ): Promise<void> {
+        await this.sessionsService.deleteByUserId(userId)
+    }
+
     // Other methods
 
     private async generateTokens({ userId, email, role }: TokensDto) {
@@ -96,6 +101,63 @@ export class AuthService {
         )
 
         return { accessToken, refreshToken }
+    }
+
+    async me(userId: number) {
+        const user = await this.usersService.findOne(userId)
+
+        if(!user) {
+            throw new UnauthorizedException('User not found.')
+        }
+
+        return user
+    }
+
+    async refresh(userId: number, refreshToken: string) {
+
+        // Find all user sessions
+        const sessions = await this.sessionsService.findAllByUserId(userId)
+
+        if(!sessions.length) {
+            throw new UnauthorizedException('Session not found.')
+        }
+
+        // Find current session by refresh token
+        let currentSession: SessionEntity | null = null
+        for (const session of sessions) {
+            const isValid = await bcrypt.compare(refreshToken, session.refreshToken)
+            if(isValid) {
+                currentSession = session
+                break
+            }
+        }
+
+        if(!currentSession) {
+            throw new UnauthorizedException('Invalid refresh token.')
+        }
+
+        // Get user
+        const user = await this.usersService.findOne(currentSession.userId)
+
+        if(!user) {
+            throw new UnauthorizedException('User not found.')
+        }
+
+        // Delete current session
+        await this.sessionsService.deleteById(currentSession.id)
+
+        // Generate new tokens
+        const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens({
+            userId: user.id,
+            email: user.email,
+            role: user.userRole
+        })
+
+        // Save new session
+        await this.saveSession({ userId: user.id, refreshToken: newRefreshToken })
+
+        return { accessToken, refreshToken: newRefreshToken }
+
     }
 
     private async saveSession({ userId, refreshToken }: SessionDto) {

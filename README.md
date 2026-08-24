@@ -20,7 +20,7 @@ pg_isready - check connection
 # TS
 
 CTRL + Shift + P - restart server
-kill -9 $(lsof -t -i:3000) - kill process
+kill -9 $(lsof -t -i:3000) - kill process by port
 lsof -i :3000 -  check all ports
 
 # Seeds

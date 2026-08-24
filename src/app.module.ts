@@ -9,6 +9,8 @@ import { UsersModule } from './modules/users/users.module'; // Connecting users 
 import { SettingsModule } from './modules/settings/settings.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
+import { MailModule } from './modules/mail/mail.module';
+import { PasswordResetsModule } from './modules/auth/password-resets/password-resets.module';
 
 @Module({
   // Other modules that need for this module
@@ -33,7 +35,9 @@ import { SessionsModule } from './modules/sessions/sessions.module';
     UsersModule,
     SettingsModule,
     AuthModule,
-    SessionsModule
+    SessionsModule,
+    MailModule,
+    PasswordResetsModule
   ],
   // Controllers that process requests
   controllers: [AppController],

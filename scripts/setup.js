@@ -25,6 +25,16 @@ async function setup() {
     JWT_SECRET: await question('JWT secret (press Enter to use generated): ') || generatedSecret,
     JWT_EXPIRES_IN: await question('JWT expires in (default: 7d): ') || '7d',
     FRONTEND_URL: await question('Frontend URL (default: http://localhost:5173): ') || 'http://localhost:5173',
+    SMTP_HOST: await question('SMTP host (e.g. smtp.gmail.com): '),
+    SMTP_PORT: await question('SMTP port (default: 587): ') || '587',
+    SMTP_USER: await question('SMTP username (email): '),
+    SMTP_PASSWORD: await question('SMTP password: '),
+    SMTP_FROM: await question('SMTP from email (press Enter to use SMTP username): '),
+  }
+
+  // If SMTP_FROM is empty — use SMTP_USER
+  if (!config.SMTP_FROM) {
+    config.SMTP_FROM = config.SMTP_USER
   }
 
   const envContent = Object.entries(config)

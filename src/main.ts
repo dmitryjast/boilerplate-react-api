@@ -1,7 +1,10 @@
 import { NestFactory } from '@nestjs/core'; // Main framework class
 import { AppModule } from './app.module'; // Combine all app modules
 import { ConfigService } from '@nestjs/config'; // Service for reading *.env
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common'; // Interceptor for process @Exclude() - hide specific, and @Expose() - show specific
+import { Reflector } from '@nestjs/core'; // Read metadata of decorators
+
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,6 +30,9 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     //whitelist: true,
   }))
+
+  app.use(cookieParser()) // Enable cookie parsing for HttpOnly cookies
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector))) // Automatically exclude @Exclude() fields from responses
 
   await app.listen(port);
 }

@@ -27,4 +27,16 @@ export class SessionsService {
         return await this.sessionsRepository.save(session)
     }
 
+    async findAllByUserId(userId: number): Promise<Session[]> {
+        return await this.sessionsRepository.find({ where: { userId } })
+    }
+
+    async deleteByUserId(userId: number): Promise<void> { // Delete all user sessions
+        await this.sessionsRepository.delete({ userId })
+    }
+
+    async deleteById(id: number): Promise<void> { // Delete specific session
+        await this.sessionsRepository.delete({ id })
+    }
+
 }
