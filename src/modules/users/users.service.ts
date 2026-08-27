@@ -46,4 +46,9 @@ export class UsersService {
         return await this.usersRepository.findOne({ where: {userRole: role} })
     }
 
+    async updatePassword(userId: number, newPassword: string): Promise<void> {
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+        await this.usersRepository.update(userId, { password: hashedPassword })
+    }
+
 }

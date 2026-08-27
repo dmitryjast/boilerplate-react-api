@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
+import { PasswordResetsService } from './password-resets/password-resets.service';
+import { MailService } from '../mail/mail.service';
 import { UserRole } from '../users/user.entity';
 import { Session as SessionEntity } from '../sessions/session.entity';
 
@@ -31,6 +33,8 @@ export class AuthService {
         private usersService: UsersService, // private - only inside class, protected - iinside class and inheritance, public - everywhere or if not setted
         private sessionsService: SessionsService,
         private jwtService: JwtService,
+        private passwordResetsService: PasswordResetsService,
+        private mailService: MailService,
     ) {}
 
     // Main Methods
@@ -85,6 +89,57 @@ export class AuthService {
 
     async logout( userId: number ): Promise<void> {
         await this.sessionsService.deleteByUserId(userId)
+    }
+
+    async forgotPassword(email: string) {
+        // Find user
+        const user = await this.usersService.findByEmail(email)
+
+        if(!user) {
+            // Don't reveal if email exists
+            return { message: 'If this email exists, you will receive a reset link.' }
+        }
+
+        // Create reset token
+        const token = await this.passwordResetsService.create(user.id)
+
+        // Build reset URL
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}&userId=${user.id}`
+
+        // Send email
+        await this.mailService.sendPasswordReset(user.email, user.name, resetUrl)
+
+        return { message: 'If this email exists, you will receive a reset link.' }
+    }
+
+    async resetPassword(userId: number, token: string, newPassword: string) {
+        // Find reset token
+        const passwordReset = await this.passwordResetsService.findByUserId(userId)
+
+        if(!passwordReset) {
+            throw new UnauthorizedException('Invalid or expired reset token.')
+        }
+
+        // Check if token expired
+        if(new Date() > passwordReset.expiresAt) {
+            await this.passwordResetsService.deleteByUserId(userId)
+            throw new UnauthorizedException('Reset token has expired.')
+        }
+
+        // Verify token
+        const isTokenValid = await bcrypt.compare(token, passwordReset.token)
+
+        if(!isTokenValid) {
+            throw new UnauthorizedException('Invalid or expired reset token.')
+        }
+
+        // Update password
+        await this.usersService.updatePassword(userId, newPassword)
+
+        // Delete used token
+        await this.passwordResetsService.deleteByUserId(userId)
+
+        return { message: 'Password successfully reset.' }
     }
 
     // Other methods
