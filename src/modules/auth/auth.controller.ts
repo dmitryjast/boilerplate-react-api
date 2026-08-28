@@ -17,9 +17,10 @@ export class AuthController {
         private configService: ConfigService
     ) {}
 
-    @Post('register') // Process post request
-    async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-        const { accessToken, refreshToken } = await this.authService.register(dto)
+    @Post('login') // Process post request
+    @HttpCode(200)
+    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+        const { accessToken, refreshToken } = await this.authService.login(dto)
 
         // Write refresh token to HttpOnly Cookie
         this.setRefreshTokenCookie(res, refreshToken)
@@ -27,10 +28,9 @@ export class AuthController {
         return { accessToken }
     }
 
-    @Post('login') // Process post request
-    @HttpCode(200)
-    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-        const { accessToken, refreshToken } = await this.authService.login(dto)
+    @Post('register') // Process post request
+    async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+        const { accessToken, refreshToken } = await this.authService.register(dto)
 
         // Write refresh token to HttpOnly Cookie
         this.setRefreshTokenCookie(res, refreshToken)
@@ -45,6 +45,18 @@ export class AuthController {
         await this.authService.logout(req.user.userId)
         res.clearCookie('refreshToken')
         return { message: 'Logged out successfully.' }
+    }
+
+    @Post('forgot-password')
+    @HttpCode(200)
+    async forgotPassword(@Body() body: { email: string }) {
+        return await this.authService.forgotPassword(body.email)
+    }
+
+    @Post('reset-password')
+    @HttpCode(200)
+    async resetPassword(@Body() body: { userId: number, token: string, newPassword: string }) {
+        return await this.authService.resetPassword(body.userId, body.token, body.newPassword)
     }
 
     @Post('refresh')

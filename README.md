@@ -1,4 +1,14 @@
 
+# Main modules
+Autentication
+  - Login
+  - Register
+  - Forgot
+  // Verification
+Mail system
+
+  
+
 # Base commands:
 
 npm run setup    — Fill in environment variables
