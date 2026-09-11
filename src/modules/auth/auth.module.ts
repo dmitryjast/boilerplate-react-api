@@ -11,6 +11,7 @@ import { SessionsModule } from '../sessions/sessions.module';
 import { PasswordResetsModule } from './password-resets/password-resets.module';
 import { MailModule } from '../mail/mail.module';
 import { EmailVerificationModule } from './email-verification/email-verification.module';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -29,6 +30,6 @@ import { EmailVerificationModule } from './email-verification/email-verification
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RefreshStrategy]
+  providers: [AuthService, JwtStrategy, RefreshStrategy, RolesGuard]
 })
 export class AuthModule {}

@@ -40,6 +40,20 @@ nest generate controller modules/modulename - generate controller (if need)
 
 after filling all files run npm run start:dev - it create all tables in DB
 
+# Example of using roles guard
+
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UserRole } from '../users/user.entity';
+
+@Get('admin-only')
+@UseGuards(JwtGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+async adminOnly() {
+    return { message: 'Admin only route' }
+}
+
+
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
