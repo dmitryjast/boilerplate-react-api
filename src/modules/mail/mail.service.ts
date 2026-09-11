@@ -18,4 +18,28 @@ export class MailService {
         })
     }
 
+    async sendVerificationCode(email: string, name: string, code: string): Promise<void> {
+        await this.mailerService.sendMail({
+            to: email,
+            subject: 'Email Verification Code',
+            template: 'verification-code',
+            context: {
+                name,
+                code,
+            }
+        })
+    }
+
+    async sendVerificationLink(email: string, name: string, verifyUrl: string): Promise<void> {
+        await this.mailerService.sendMail({
+            to: email,
+            subject: 'Verify Your Email',
+            template: 'verification-link',
+            context: {
+                name,
+                verifyUrl,
+            }
+        })
+    }
+
 }

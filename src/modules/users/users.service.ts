@@ -51,4 +51,8 @@ export class UsersService {
         await this.usersRepository.update(userId, { password: hashedPassword })
     }
 
+    async verify(userId: number): Promise<void> {
+        await this.usersRepository.update(userId, { verifiedAt: new Date() })
+    }
+
 }

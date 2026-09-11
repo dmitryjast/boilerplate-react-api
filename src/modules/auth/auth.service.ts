@@ -5,6 +5,7 @@ import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { PasswordResetsService } from './password-resets/password-resets.service';
 import { MailService } from '../mail/mail.service';
+import { EmailVerificationService } from './email-verification/email-verification.service';
 import { UserRole } from '../users/user.entity';
 import { Session as SessionEntity } from '../sessions/session.entity';
 
@@ -30,11 +31,12 @@ interface SessionDto {
 export class AuthService {
 
     constructor(
-        private usersService: UsersService, // private - only inside class, protected - iinside class and inheritance, public - everywhere or if not setted
+        private usersService: UsersService,
         private sessionsService: SessionsService,
         private jwtService: JwtService,
         private passwordResetsService: PasswordResetsService,
         private mailService: MailService,
+        private emailVerificationService: EmailVerificationService,
     ) {}
 
     // Main Methods
@@ -55,6 +57,9 @@ export class AuthService {
 
         // Saving session
         await this.saveSession({ userId: user.id, refreshToken })
+
+        // Send verification email
+        await this.sendVerificationEmail(user.id, user.email, user.name)
     
         return { accessToken, refreshToken }
     }
@@ -87,7 +92,7 @@ export class AuthService {
         }
     }
 
-    async logout( userId: number ): Promise<void> {
+    async logout(userId: number): Promise<void> {
         await this.sessionsService.deleteByUserId(userId)
     }
 
@@ -96,7 +101,6 @@ export class AuthService {
         const user = await this.usersService.findByEmail(email)
 
         if(!user) {
-            // Don't reveal if email exists
             return { message: 'If this email exists, you will receive a reset link.' }
         }
 
@@ -142,16 +146,77 @@ export class AuthService {
         return { message: 'Password successfully reset.' }
     }
 
+    async sendVerificationEmail(userId: number, email: string, name: string): Promise<void> {
+        const method = process.env.EMAIL_VERIFICATION_METHOD
+
+        if(method === 'code') {
+            const code = await this.emailVerificationService.createCode(userId)
+            await this.mailService.sendVerificationCode(email, name, code)
+        } else {
+            const token = await this.emailVerificationService.createToken(userId)
+            const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}&userId=${userId}`
+            await this.mailService.sendVerificationLink(email, name, verifyUrl)
+        }
+    }
+
+    async verifyEmail(userId: number, tokenOrCode: string) {
+        const verification = await this.emailVerificationService.findByUserId(userId)
+
+        if(!verification) {
+            throw new UnauthorizedException('Verification not found.')
+        }
+
+        const method = process.env.EMAIL_VERIFICATION_METHOD
+
+        if(method === 'code') {
+            if(!verification.code || !verification.codeExpiresAt) {
+                throw new UnauthorizedException('Invalid verification.')
+            }
+
+            if(new Date() > verification.codeExpiresAt) {
+                await this.emailVerificationService.deleteByUserId(userId)
+                throw new UnauthorizedException('Verification code has expired.')
+            }
+
+            const isValid = await bcrypt.compare(tokenOrCode, verification.code)
+            if(!isValid) {
+                throw new UnauthorizedException('Invalid verification code.')
+            }
+        } else {
+            if(!verification.token || !verification.tokenExpiresAt) {
+                throw new UnauthorizedException('Invalid verification.')
+            }
+
+            if(new Date() > verification.tokenExpiresAt) {
+                await this.emailVerificationService.deleteByUserId(userId)
+                throw new UnauthorizedException('Verification token has expired.')
+            }
+
+            const isValid = await bcrypt.compare(tokenOrCode, verification.token)
+            if(!isValid) {
+                throw new UnauthorizedException('Invalid verification token.')
+            }
+        }
+
+        // Mark user as verified
+        await this.usersService.verify(userId)
+
+        // Delete verification record
+        await this.emailVerificationService.deleteByUserId(userId)
+
+        return { message: 'Email successfully verified.' }
+    }
+
     // Other methods
 
     private async generateTokens({ userId, email, role }: TokensDto) {
         const accessToken = this.jwtService.sign(
-            { userId, email, role }, // Data that wtires to token
+            { userId, email, role },
             { expiresIn: '15m' }
         )
 
         const refreshToken = this.jwtService.sign(
-            { userId }, // Data that wtires to token
+            { userId },
             { expiresIn: '30d' }
         )
 
@@ -169,7 +234,6 @@ export class AuthService {
     }
 
     async refresh(userId: number, refreshToken: string) {
-
         // Find all user sessions
         const sessions = await this.sessionsService.findAllByUserId(userId)
 
@@ -212,7 +276,6 @@ export class AuthService {
         await this.saveSession({ userId: user.id, refreshToken: newRefreshToken })
 
         return { accessToken, refreshToken: newRefreshToken }
-
     }
 
     private async saveSession({ userId, refreshToken }: SessionDto) {
@@ -226,6 +289,3 @@ export class AuthService {
     }
 
 }
-
-
-

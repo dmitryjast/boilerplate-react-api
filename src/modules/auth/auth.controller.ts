@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Res, HttpCode, UseGuards, Request } from '@nestjs/common'; // Controller - marks class as controller, Post - HTTP POST requests, Body - gets request body, Res - access to Express response object
+import { Controller, Post, Get, Body, Res, HttpCode, UseGuards, Request } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -7,9 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtGuard } from './guards/jwt.guard';
 import { RefreshGuard } from './guards/refresh.guard';
 
-
 @Controller('auth')
-
 export class AuthController {
 
     constructor(
@@ -17,30 +15,24 @@ export class AuthController {
         private configService: ConfigService
     ) {}
 
-    @Post('login') // Process post request
+    @Post('login')
     @HttpCode(200)
     async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
         const { accessToken, refreshToken } = await this.authService.login(dto)
-
-        // Write refresh token to HttpOnly Cookie
         this.setRefreshTokenCookie(res, refreshToken)
-
         return { accessToken }
     }
 
-    @Post('register') // Process post request
+    @Post('register')
     async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
         const { accessToken, refreshToken } = await this.authService.register(dto)
-
-        // Write refresh token to HttpOnly Cookie
         this.setRefreshTokenCookie(res, refreshToken)
-
         return { accessToken }
     }
 
-    @Post('logout') // Process post request
+    @Post('logout')
     @HttpCode(200)
-    @UseGuards(JwtGuard) // Protect route with guard
+    @UseGuards(JwtGuard)
     async logout(@Request() req, @Res({ passthrough: true }) res: Response) {
         await this.authService.logout(req.user.userId)
         res.clearCookie('refreshToken')
@@ -59,6 +51,21 @@ export class AuthController {
         return await this.authService.resetPassword(body.userId, body.token, body.newPassword)
     }
 
+    @Post('send-verification')
+    @HttpCode(200)
+    @UseGuards(JwtGuard)
+    async sendVerification(@Request() req) {
+        const user = await this.authService.me(req.user.userId)
+        await this.authService.sendVerificationEmail(user.id, user.email, user.name)
+        return { message: 'Verification email sent.' }
+    }
+
+    @Post('verify-email')
+    @HttpCode(200)
+    async verifyEmail(@Body() body: { userId: number, tokenOrCode: string }) {
+        return await this.authService.verifyEmail(body.userId, body.tokenOrCode)
+    }
+
     @Post('refresh')
     @HttpCode(200)
     @UseGuards(RefreshGuard)
@@ -67,9 +74,7 @@ export class AuthController {
             req.user.userId,
             req.user.refreshToken
         )
-
         this.setRefreshTokenCookie(res, refreshToken)
-
         return { accessToken }
     }
 
@@ -81,13 +86,13 @@ export class AuthController {
 
     // Other methods
     private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    const appMode = this.configService.get('NODE_ENV')
-    res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: appMode === 'prod',
-        sameSite: 'lax', // CSRF protection, strict - same site only | lax - allows navigation, blocks iframe/img | none - all requests (requires secure: true)
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    })
-}
+        const appMode = this.configService.get('NODE_ENV')
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: appMode === 'prod',
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        })
+    }
 
 }

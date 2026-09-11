@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { PasswordResetsModule } from './password-resets/password-resets.module';
 import { MailModule } from '../mail/mail.module';
+import { EmailVerificationModule } from './email-verification/email-verification.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MailModule } from '../mail/mail.module';
     SessionsModule,
     PasswordResetsModule,
     MailModule,
+    EmailVerificationModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
