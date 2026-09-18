@@ -26,6 +26,7 @@ export class MailService {
             context: {
                 name,
                 code,
+                verifyUrl: `${process.env.FRONTEND_URL}/verify-email`,
             }
         })
     }
