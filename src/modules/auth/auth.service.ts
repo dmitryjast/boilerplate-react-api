@@ -58,9 +58,11 @@ export class AuthService {
         // Saving session
         await this.saveSession({ userId: user.id, refreshToken })
 
-        // Send verification email
-        await this.sendVerificationEmail(user.id, user.email, user.name)
-    
+        // Send verification email without waiting (fire and forget)
+        this.sendVerificationEmail(user.id, user.email, user.name).catch(err => 
+            console.error('Failed to send verification email:', err)
+        )
+
         return { accessToken, refreshToken }
     }
 
