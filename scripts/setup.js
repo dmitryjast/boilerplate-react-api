@@ -30,6 +30,7 @@ async function setup() {
     SMTP_USER: await question('SMTP username (email): '),
     SMTP_PASSWORD: await question('SMTP password: '),
     SMTP_FROM: await question('SMTP from email (press Enter to use SMTP username): '),
+    EMAIL_VERIFICATION_METHOD: await question('Email verification method (link/code, default: link): ') || 'link',
   }
 
   // If SMTP_FROM is empty — use SMTP_USER
@@ -44,8 +45,19 @@ async function setup() {
   fs.writeFileSync('.env', envContent)
 
   console.log(`\n🔑 Generated JWT secret: ${generatedSecret}\n`)
-  console.log('\n✅ .env file created successfully!\n')
-  rl.close()
+  console.log('✅ .env file created successfully!')
+
+  rl.close() // Close before seed so seed can accept user input
+
+  const { execSync } = require('child_process')
+
+  console.log('\n⚡ Running seeds...\n')
+
+  try {
+    execSync('npm run seed', { stdio: 'inherit' })
+  } catch (err) {
+    console.error('❌ Seed failed. Run "npm run seed" manually.')
+  }
 }
 
 setup()
