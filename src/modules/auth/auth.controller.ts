@@ -3,6 +3,9 @@ import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtGuard } from './guards/jwt.guard';
 import { RefreshGuard } from './guards/refresh.guard';
@@ -41,14 +44,14 @@ export class AuthController {
 
     @Post('forgot-password')
     @HttpCode(200)
-    async forgotPassword(@Body() body: { email: string }) {
-        return await this.authService.forgotPassword(body.email)
+    async forgotPassword(@Body() dto: ForgotPasswordDto) {
+        return await this.authService.forgotPassword(dto.email)
     }
 
     @Post('reset-password')
     @HttpCode(200)
-    async resetPassword(@Body() body: { userId: number, token: string, newPassword: string }) {
-        return await this.authService.resetPassword(body.userId, body.token, body.newPassword)
+    async resetPassword(@Body() dto: ResetPasswordDto) {
+        return await this.authService.resetPassword(dto.userId, dto.token, dto.newPassword)
     }
 
     @Post('send-verification')
@@ -62,8 +65,8 @@ export class AuthController {
 
     @Post('verify-email')
     @HttpCode(200)
-    async verifyEmail(@Body() body: { userId: number, tokenOrCode: string }) {
-        return await this.authService.verifyEmail(body.userId, body.tokenOrCode)
+    async verifyEmail(@Body() dto: VerifyEmailDto) {
+        return await this.authService.verifyEmail(dto.userId, dto.tokenOrCode)
     }
 
     @Post('refresh')

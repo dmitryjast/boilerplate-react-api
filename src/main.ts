@@ -28,7 +28,8 @@ async function bootstrap() {
   })
 
   app.useGlobalPipes(new ValidationPipe({
-    //whitelist: true,
+    whitelist: true, // Strip properties without class-validator decorators
+    transform: true, // Turn request body into DTO class instance
   }))
 
   app.use(cookieParser()) // Enable cookie parsing for HttpOnly cookies
