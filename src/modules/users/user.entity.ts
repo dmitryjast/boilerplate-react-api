@@ -13,10 +13,10 @@ export class User {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ unique: true })
+    @Column({ type: 'citext', unique: true }) // citext — case-insensitive comparison and uniqueness
     name!: string;
 
-    @Column({ unique: true})
+    @Column({ type: 'citext', unique: true })
     email!: string;
 
     @Exclude()

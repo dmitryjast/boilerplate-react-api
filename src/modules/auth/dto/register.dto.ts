@@ -1,9 +1,13 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { Trim } from './trim.transform';
 
 export class RegisterDto {
+    @Trim()
     @IsString()
+    @IsNotEmpty()
     name!: string
 
+    @Trim()
     @IsEmail()
     email!: string
 

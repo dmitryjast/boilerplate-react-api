@@ -95,6 +95,7 @@ test/                    # e2e
 
 ### Сериализация и валидация
 - `ClassSerializerInterceptor` глобально применяет `@Exclude()`, поэтому `User.password` не попадает в ответы, если возвращать сущность.
+- У `email` и `name` в auth-DTO обрезаются пробелы по краям декоратором `@Trim()` из `auth/dto/trim.transform.ts`. Он срабатывает до валидации.
 - `ValidationPipe` глобальный, с `whitelist: true` и `transform: true`. Поля без декораторов class-validator молча вырезаются, а тело приходит в контроллер экземпляром DTO-класса. Валидация работает только там, где тело описано DTO-классом в `dto/`, поэтому каждое новое тело запроса описывать DTO-классом, а не инлайн-типом. Каждое поле DTO должно иметь хотя бы один декоратор, иначе `whitelist` его вырежет.
 
 ### CORS
@@ -104,6 +105,12 @@ test/                    # e2e
 - `synchronize: true` везде, кроме `NODE_ENV=prod`. Схема берётся из сущностей, миграций нет.
 - Сущности подхватываются по маске `**/*.entity{.ts,.js}`.
 - Таблицы: `users`, `sessions`, `email_verifications`, `password_resets`, `settings`. У дочерних таблиц `ON DELETE CASCADE` на `users`.
+- `users.name` и `users.email` имеют тип **`citext`** (расширение Postgres, TypeORM ставит его сам). Значение хранится в исходном регистре (`IvanPetrov`), а сравнение и уникальность работают без учёта регистра. Поэтому `findByEmail` и `findByName` регистронезависимы без изменений в запросах. `name` — уникальный никнейм, настоящее имя хранится в `firstName` и `lastName`.
+- ⚠️ **Тип колонки не менять через `synchronize`**: TypeORM удаляет колонку и создаёт её заново, и данные теряются. Тип меняется вручную через `ALTER TABLE … ALTER COLUMN … TYPE …`, после чего правится сущность. Для новой базы ничего делать не нужно, `synchronize` сразу создаст `citext`. Для существующей базы (и для прода, где `synchronize` выключен):
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS citext;
+  ALTER TABLE users ALTER COLUMN name TYPE citext, ALTER COLUMN email TYPE citext;
+  ```
 
 ## API
 
@@ -112,7 +119,7 @@ test/                    # e2e
 | Метод | Роут | Guard | Тело | Ответ |
 |---|---|---|---|---|
 | GET | `/` | — | — | `Hello World!` |
-| POST | `/auth/register` | — | `{ name, email, password(min 8) }` | `{ accessToken }` + cookie |
+| POST | `/auth/register` | — | `{ name, email, password(min 8) }` | `{ accessToken }` + cookie. 409, если имя или email заняты (без учёта регистра) |
 | POST | `/auth/login` | — | `{ email, password }` | `{ accessToken }` + cookie |
 | POST | `/auth/refresh` | RefreshGuard (cookie) | — | `{ accessToken }` + новый cookie |
 | POST | `/auth/logout` | JwtGuard | — | `{ message }`, cookie очищается |
@@ -149,7 +156,9 @@ test/                    # e2e
 - **`*.spec.ts` в `.gitignore`.** Тесты лежат только локально и в репозиторий не попадают.
 - **Шаблоны писем** читаются из `process.cwd()/src/modules/mail/templates`, а не из `dist`. Поэтому прод нужно запускать из корня проекта, где есть `src/`. Nest при этом копирует `.hbs` в `dist` (`nest-cli.json` → `assets`).
 - В `AuthService` и `MailService` часть env читается через `process.env`, а не через `ConfigService`.
-- `User.name` уникальный, но `register` проверяет только email. Повторное имя даст ошибку БД (500).
+- `register` возвращает 409, если имя или email заняты. Если два запроса пришли одновременно, ошибка уникальности из Postgres (`23505`) тоже превращается в 409.
+- Юнит-тесты (`*.spec.ts`) — заготовки Nest без моков, и 8 из 11 падают с «Nest can't resolve dependencies». На них пока нельзя опираться.
+- Код проекта не отформатирован Prettier: `eslint` выдаёт сотни ошибок `prettier/prettier` в старых файлах.
 - `ROLES_KEY` объявлен дважды: в `roles.decorator.ts` и `roles.guard.ts`. Значения должны совпадать.
 - `settings.seed` не проверяет, есть ли уже запись, и при каждом запуске добавляет новую строку.
 - `setup.js` перезаписывает `.env` целиком.

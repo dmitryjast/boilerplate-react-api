@@ -1,5 +1,6 @@
 import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { QueryFailedError } from 'typeorm';
 
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
@@ -49,8 +50,21 @@ export class AuthService {
             throw new ConflictException('User with this email already exists.')
         }
 
+        // Checking for name taken
+        if(await this.usersService.findByName(name)) {
+            throw new ConflictException('User with this name already exists.')
+        }
+
         // Creating user
-        user = await this.usersService.create({ name, email, password })
+        try {
+            user = await this.usersService.create({ name, email, password })
+        } catch (err) {
+            // Unique violation — same name or email registered at the same moment
+            if(err instanceof QueryFailedError && (err.driverError as { code?: string }).code === '23505') {
+                throw new ConflictException('User with this name or email already exists.')
+            }
+            throw err
+        }
 
         // Generating tokens
         const { accessToken, refreshToken } = await this.generateTokens({ userId: user.id, email: user.email, role: user.userRole })
