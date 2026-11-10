@@ -1,5 +1,5 @@
 import { IsEmail, IsString } from 'class-validator'
-import { Trim } from './trim.transform'
+import { Trim } from '../../../common/transforms/trim.transform'
 
 export class LoginDto {
     @Trim()

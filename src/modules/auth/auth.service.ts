@@ -159,6 +159,9 @@ export class AuthService {
         // Delete used token
         await this.passwordResetsService.deleteByUserId(userId)
 
+        // Log out from all devices — old refresh tokens must stop working
+        await this.sessionsService.deleteByUserId(userId)
+
         return { message: 'Password successfully reset.' }
     }
 

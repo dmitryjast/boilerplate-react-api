@@ -30,12 +30,19 @@ async function setup() {
     SMTP_USER: await question('SMTP username (email): '),
     SMTP_PASSWORD: await question('SMTP password: '),
     SMTP_FROM: await question('SMTP from email (press Enter to use SMTP username): '),
+    CONTACT_EMAIL: await question('Contact form recipient email (press Enter to use SMTP from email): '),
     EMAIL_VERIFICATION_METHOD: await question('Email verification method (link/code, default: link): ') || 'link',
+    TRUST_PROXY: await question('How many proxies are in front of the API? Used to get the real client IP for rate limiting.\n  0 = none, requests come straight to the API\n  1 = Cloudflare or nginx\n  2 = Cloudflare + nginx\nNumber of proxies (default: 0): ') || '0',
   }
 
   // If SMTP_FROM is empty — use SMTP_USER
   if (!config.SMTP_FROM) {
     config.SMTP_FROM = config.SMTP_USER
+  }
+
+  // If CONTACT_EMAIL is empty — use SMTP_FROM
+  if (!config.CONTACT_EMAIL) {
+    config.CONTACT_EMAIL = config.SMTP_FROM
   }
 
   const envContent = Object.entries(config)

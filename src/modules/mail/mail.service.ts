@@ -43,4 +43,19 @@ export class MailService {
         })
     }
 
+    async sendContactMessage(to: string, name: string, email: string, subject: string, message: string): Promise<void> {
+        await this.mailerService.sendMail({
+            to,
+            replyTo: email, // "Reply" in the mail client answers the sender directly
+            subject: `[Contact] ${subject}`,
+            template: 'contact',
+            context: {
+                name,
+                email,
+                subject,
+                message,
+            }
+        })
+    }
+
 }

@@ -42,10 +42,12 @@ scripts/
   seeds/
     index.ts             # поднимает Nest application context и вызывает сиды
     admin.seed.ts        # создаёт admin, если его нет (спрашивает данные в терминале)
-    settings.seed.ts     # создаёт запись настроек
+    settings.seed.ts     # создаёт запись настроек, если её нет
 src/
   main.ts                # bootstrap: CORS, ValidationPipe, cookie-parser, ClassSerializerInterceptor
   app.module.ts          # ConfigModule (global), TypeORM, подключение модулей
+  common/
+    transforms/          # @Trim() and other shared class-transformer decorators
   modules/
     auth/
       auth.controller.ts / auth.service.ts   # все auth-роуты и логика
@@ -59,6 +61,7 @@ src/
     sessions/            # сущность Session (хэши refresh-токенов), SessionsService
     settings/            # сущность Settings, SettingsService (контроллер пока пустой)
     mail/                # MailService + templates/*.hbs
+    contact/             # POST /contact: contact form (ContactDto)
 test/                    # e2e
 ```
 
@@ -87,16 +90,26 @@ test/                    # e2e
 - Способ верификации задаётся в `EMAIL_VERIFICATION_METHOD`: `link` (по умолчанию) или `code`.
   - `link`: 32-байтный hex-токен, ссылка `FRONTEND_URL/verify-email?token=…&userId=…`.
   - `code`: 6 hex-символов в верхнем регистре.
-- Сброс пароля: токен, ссылка `FRONTEND_URL/reset-password?token=…&userId=…`.
+- Сброс пароля: токен, ссылка `FRONTEND_URL/reset-password?token=…&userId=…`. После успешного сброса удаляются **все сессии** пользователя: старые refresh-токены перестают работать, и нужно войти заново.
 - Все токены и коды хранятся **в виде bcrypt-хэшей**, живут **1 час**, на пользователя одна активная запись (старая удаляется при создании новой).
+- SMTP timeouts (`mail.module.ts`): connect 3s, greeting 10s, idle 30s. nodemailer tries each IP of `SMTP_HOST` with the full connect timeout, so the worst case is about (number of IPs × 3s) — ~28s on Mailtrap.
 - Письмо о верификации при регистрации отправляется в фоне, ответ его не ждёт (ошибка только логируется). `forgot-password` письмо ждёт.
 - `forgot-password` всегда отвечает одинаково, чтобы по ответу нельзя было узнать, существует ли email.
 - Верификация ставит `users.verifiedAt`. Доступ для неверифицированных пока **не ограничен**.
 
 ### Сериализация и валидация
 - `ClassSerializerInterceptor` глобально применяет `@Exclude()`, поэтому `User.password` не попадает в ответы, если возвращать сущность.
-- У `email` и `name` в auth-DTO обрезаются пробелы по краям декоратором `@Trim()` из `auth/dto/trim.transform.ts`. Он срабатывает до валидации.
+- У `email` и `name` в auth-DTO обрезаются пробелы по краям декоратором `@Trim()` из `common/transforms/trim.transform.ts`. Он срабатывает до валидации. Shared helpers used by several modules go in `src/common/`.
 - `ValidationPipe` глобальный, с `whitelist: true` и `transform: true`. Поля без декораторов class-validator молча вырезаются, а тело приходит в контроллер экземпляром DTO-класса. Валидация работает только там, где тело описано DTO-классом в `dto/`, поэтому каждое новое тело запроса описывать DTO-классом, а не инлайн-типом. Каждое поле DTO должно иметь хотя бы один декоратор, иначе `whitelist` его вырежет.
+
+### Rate limiting
+
+- `@nestjs/throttler`, global `ThrottlerGuard` (`APP_GUARD` in `app.module.ts`). Default: 100 requests per minute per IP **for each route separately**.
+- Stricter limits via `@Throttle()` on routes: `login` 10/15 min, `register` 5/hour, `forgot-password` 3/15 min, `send-verification` 3/15 min, `verify-email` 10/15 min, `reset-password` 10/15 min, `contact` 5/10 min. `refresh`, `me`, `logout` use only the default.
+- Over the limit: `429` with `{ message: 'Too many requests. Please try again later.' }` and a `Retry-After` header (seconds).
+- The limit is checked before validation, so invalid requests count too.
+- Counters live in server memory: they reset on restart and are not shared between several instances. Move them to Redis together with the email queue (see PLAN).
+- `TRUST_PROXY` — number of proxies in front of the API (Cloudflare or nginx = 1, Cloudflare + nginx = 2). Without it, behind a proxy all users share the proxy's IP and one limit. Never set it higher than the real count: clients could then fake their IP via `X-Forwarded-For`.
 
 ### CORS
 Разрешены запросы без `origin`, с `FRONTEND_URL` и с любого `http://localhost:<port>`. `credentials: true`, иначе cookie не передаются.
@@ -128,6 +141,7 @@ test/                    # e2e
 | POST | `/auth/reset-password` | — | `{ userId, token, newPassword }` | `{ message }` |
 | POST | `/auth/send-verification` | JwtGuard | — | `{ message }` |
 | POST | `/auth/verify-email` | — | `{ userId, tokenOrCode }` | `{ message }` |
+| POST | `/contact` | — | `{ name(2–100), email, subject(3–150), message(10–2000) }`, all trimmed | `{ message }` right away. Saves to `contact_messages`, then sends `[Contact] <subject>` to `CONTACT_EMAIL` in background (`replyTo` = sender); `sentAt` is set on success, NULL means not sent |
 
 Контроллеры `/users` и `/settings` объявлены, но роутов в них пока нет.
 
@@ -148,6 +162,8 @@ test/                    # e2e
 | `SMTP_HOST` / `SMTP_PORT` | — / `587` | SMTP-сервер |
 | `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP-логин (для Gmail нужен app password) |
 | `SMTP_FROM` | `SMTP_USER` | отправитель |
+| `TRUST_PROXY` | `0` | number of proxies in front of the API, for the real client IP in rate limiting |
+| `CONTACT_EMAIL` | `SMTP_FROM` (in `setup.js`) | team address for contact form messages. **Required**: the app does not start without it |
 | `EMAIL_VERIFICATION_METHOD` | `link` | `link` или `code` |
 
 ## Важные нюансы
@@ -160,6 +176,6 @@ test/                    # e2e
 - Юнит-тесты (`*.spec.ts`) — заготовки Nest без моков, и 8 из 11 падают с «Nest can't resolve dependencies». На них пока нельзя опираться.
 - Код проекта не отформатирован Prettier: `eslint` выдаёт сотни ошибок `prettier/prettier` в старых файлах.
 - `ROLES_KEY` объявлен дважды: в `roles.decorator.ts` и `roles.guard.ts`. Значения должны совпадать.
-- `settings.seed` не проверяет, есть ли уже запись, и при каждом запуске добавляет новую строку.
+- Сиды идемпотентны: `admin.seed` и `settings.seed` пропускают создание, если запись уже есть. Новые сиды писать так же.
 - `setup.js` перезаписывает `.env` целиком.
 - `.env.example` устарел: в нём нет `NODE_ENV`, `SMTP_*` и `EMAIL_VERIFICATION_METHOD`. Актуальный список — таблица выше.

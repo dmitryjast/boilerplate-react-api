@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common'; // Decorator that marked class as nest module
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule, minutes } from '@nestjs/throttler'; // Rate limiting
 import { AppController } from './app.controller'; // Responsible for requests
 import { AppService } from './app.service'; // Responsible for logic
 
@@ -11,12 +13,18 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { MailModule } from './modules/mail/mail.module';
 import { PasswordResetsModule } from './modules/auth/password-resets/password-resets.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   // Other modules that need for this module
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    // Default rate limit for every route, per IP. Stricter limits are set on routes with @Throttle()
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: minutes(1), limit: 100 }],
+      errorMessage: 'Too many requests. Please try again later.',
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -37,11 +45,15 @@ import { PasswordResetsModule } from './modules/auth/password-resets/password-re
     AuthModule,
     SessionsModule,
     MailModule,
-    PasswordResetsModule
+    PasswordResetsModule,
+    ContactModule
   ],
   // Controllers that process requests
   controllers: [AppController],
   // Services with business logic
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard }, // Apply rate limiting to all routes
+  ],
 })
 export class AppModule {}

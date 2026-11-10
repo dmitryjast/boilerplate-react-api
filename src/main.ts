@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core'; // Main framework class
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module'; // Combine all app modules
 import { ConfigService } from '@nestjs/config'; // Service for reading *.env
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common'; // Interceptor for process @Exclude() - hide specific, and @Expose() - show specific
@@ -7,10 +8,17 @@ import { Reflector } from '@nestjs/core'; // Read metadata of decorators
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') ?? 3000;
+
+  // Number of proxies in front of the API (Cloudflare, nginx, load balancer).
+  // Needed to get the real client IP for rate limiting. 0 = no proxy. Do not set it higher than the real count: clients could fake their IP
+  const trustProxy = Number(configService.get('TRUST_PROXY') ?? 0)
+  if (trustProxy > 0) {
+    app.set('trust proxy', trustProxy)
+  }
 
   // Enable CORS (Cross-Origin Resource Sharing)
   app.enableCors({

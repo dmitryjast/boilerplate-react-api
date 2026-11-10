@@ -17,6 +17,11 @@ import { join } from 'path';
             user: configService.get('SMTP_USER'),
             pass: configService.get('SMTP_PASSWORD'),
           },
+          // Fail fast when SMTP is unreachable instead of hanging for minutes.
+          // connectionTimeout applies to each IP of SMTP_HOST in turn (Mailtrap has 6), so keep it short
+          connectionTimeout: 3_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 30_000,
         },
         defaults: {
           from: configService.get('SMTP_FROM'),
